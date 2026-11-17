@@ -1,5 +1,7 @@
 # blog-app
 
+Live (Logan Born): https://blog.loganborn.com/blog
+
 A portable **Angular blog** with a Cognito-protected **admin** and an **AWS SAM** backend (API Gateway HTTP API, Lambda, DynamoDB, S3 media, scheduled publish).
 
 Extracted so the same codebase can power multiple sites (different domains / AWS accounts) via config.

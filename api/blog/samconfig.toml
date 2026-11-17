@@ -7,4 +7,4 @@ capabilities = "CAPABILITY_IAM"
 confirm_changeset = false
 fail_on_empty_changeset = false
 # Fill these in per deploy target (do not commit real values to a public fork if you care about privacy)
-parameter_overrides = "ProjectPrefix=blog SiteOrigin=http://localhost:4200 ExtraOrigins=http://127.0.0.1:4200 CognitoUserPoolId=us-east-1_XXXXXXXXX CognitoClientId=YOUR_COGNITO_APP_CLIENT_ID AllowedEmails=you@example.com MaxImagesPerPost=12"
+parameter_overrides = "ProjectPrefix=blog AllowedOrigins=http://localhost:4200,http://127.0.0.1:4200 CognitoUserPoolId=us-east-1_XXXXXXXXX CognitoClientId=YOUR_COGNITO_APP_CLIENT_ID AllowedEmails=you@example.com MaxImagesPerPost=12"

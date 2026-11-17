@@ -7,14 +7,10 @@ Parameters:
     Type: String
     Default: blog
     Description: Prefix for AWS resource names (e.g. loganborn, dadname)
-  SiteOrigin:
-    Type: String
-    Default: http://localhost:4200
-    Description: Primary site origin for CORS (e.g. https://example.com)
-  ExtraOrigins:
+  AllowedOrigins:
     Type: CommaDelimitedList
-    Default: "http://127.0.0.1:4200"
-    Description: Additional CORS origins
+    Default: "http://localhost:4200,http://127.0.0.1:4200"
+    Description: Comma-separated browser origins allowed for CORS
   CognitoUserPoolId:
     Type: String
   CognitoClientId:
@@ -97,9 +93,7 @@ Resources:
         CorsRules:
           - AllowedHeaders: ['*']
             AllowedMethods: [GET, PUT, HEAD]
-            AllowedOrigins: !ListAppend
-              - !Ref ExtraOrigins
-              - - !Ref SiteOrigin
+            AllowedOrigins: !Ref AllowedOrigins
             MaxAge: 3000
       BucketEncryption:
         ServerSideEncryptionConfiguration:
@@ -124,9 +118,7 @@ Resources:
     Properties:
       StageName: prod
       CorsConfiguration:
-        AllowOrigins: !ListAppend
-          - !Ref ExtraOrigins
-          - - !Ref SiteOrigin
+        AllowOrigins: !Ref AllowedOrigins
         AllowHeaders:
           - Authorization
           - Content-Type

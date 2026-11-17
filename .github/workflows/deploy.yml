@@ -1,0 +1,83 @@
+name: Deploy blog frontend
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: "22.23.4"
+  AWS_REGION: "us-east-1"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Write production environment
+        env:
+          BLOG_API_URL: ${{ secrets.BLOG_API_URL }}
+          COGNITO_REGION: ${{ secrets.COGNITO_REGION }}
+          COGNITO_USER_POOL_ID: ${{ secrets.COGNITO_USER_POOL_ID }}
+          COGNITO_CLIENT_ID: ${{ secrets.COGNITO_CLIENT_ID }}
+          COGNITO_DOMAIN: ${{ secrets.COGNITO_DOMAIN }}
+          SITE_ORIGIN: ${{ secrets.SITE_ORIGIN }}
+          ALLOWED_EMAILS: ${{ secrets.ALLOWED_EMAILS }}
+          SITE_NAME: ${{ secrets.SITE_NAME }}
+        run: |
+          python3 << 'PY'
+          import os
+          from pathlib import Path
+          emails = [e.strip() for e in os.environ["ALLOWED_EMAILS"].split(",") if e.strip()]
+          emails_lit = ", ".join(f"'{e}'" for e in emails)
+          origin = os.environ["SITE_ORIGIN"].rstrip("/")
+          Path("src/environments/environment.prod.ts").write_text(f"""export const environment = {{
+  production: true,
+  siteName: {os.environ.get('SITE_NAME', 'Blog')!r},
+  blogApiUrl: {os.environ['BLOG_API_URL']!r},
+  cognito: {{
+    region: {os.environ['COGNITO_REGION']!r},
+    userPoolId: {os.environ['COGNITO_USER_POOL_ID']!r},
+    clientId: {os.environ['COGNITO_CLIENT_ID']!r},
+    domain: {os.environ['COGNITO_DOMAIN']!r},
+    redirectUri: '{origin}/admin',
+    logoutUri: '{origin}/',
+    allowedEmails: [{emails_lit}]
+  }}
+}};
+""")
+          PY
+
+      - run: npm ci
+      - run: npx ng build --configuration production
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Sync to S3
+        run: |
+          aws s3 sync dist/ s3://${{ secrets.S3_BUCKET_NAME }} \
+            --delete \
+            --cache-control "public,max-age=31536000,immutable" \
+            --exclude "*.html" \
+            --exclude "*.json"
+          aws s3 sync dist/ s3://${{ secrets.S3_BUCKET_NAME }} \
+            --delete \
+            --cache-control "public,max-age=0,s-maxage=31536000" \
+            --include "*.html" \
+            --include "*.json"
+
+      - name: Invalidate CloudFront
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
+            --paths "/*"
