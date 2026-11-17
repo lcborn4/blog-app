@@ -1,0 +1,180 @@
+<div class="max-w-5xl mx-auto px-4 py-10">
+  <div class="flex flex-col lg:flex-row gap-10">
+    <!-- Main column -->
+    <div class="min-w-0 flex-1 space-y-8">
+      <header class="space-y-3">
+        <div class="flex items-end justify-between gap-4">
+          <h1 class="text-3xl font-semibold tracking-tight">Blog</h1>
+          <button
+            type="button"
+            class="text-sm text-gray-600 hover:text-black inline-flex items-center gap-1.5"
+            [attr.aria-expanded]="filtersOpen()"
+            (click)="toggleFilters()"
+          >
+            <span>{{ filtersOpen() ? 'Hide sort' : 'Sort & dates' }}</span>
+            @if (filtersActive() && !filtersOpen()) {
+              <span class="inline-block size-1.5 rounded-full bg-blue-600" aria-hidden="true"></span>
+            }
+            <span class="text-xs" aria-hidden="true">{{ filtersOpen() ? '▴' : '▾' }}</span>
+          </button>
+        </div>
+
+        @if (filtersOpen()) {
+          <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-3 text-sm text-gray-600">
+            <label class="flex flex-col gap-1">
+              <span>From</span>
+              <input
+                type="date"
+                class="border border-gray-300 rounded-md bg-white px-2.5 py-1.5 text-sm text-gray-900"
+                [value]="rangeFrom()"
+                (change)="setRangeFrom($any($event.target).value)"
+              />
+            </label>
+
+            <label class="flex flex-col gap-1">
+              <span>To</span>
+              <input
+                type="date"
+                class="border border-gray-300 rounded-md bg-white px-2.5 py-1.5 text-sm text-gray-900"
+                [value]="rangeTo()"
+                (change)="setRangeTo($any($event.target).value)"
+              />
+            </label>
+
+            <label class="flex flex-col gap-1">
+              <span>Sort by</span>
+              <select
+                class="border border-gray-300 rounded-md bg-white px-2.5 py-1.5 text-sm text-gray-900"
+                [value]="sort()"
+                (change)="setSort($any($event.target).value)"
+              >
+                @for (opt of sortOptions; track opt.value) {
+                  <option [value]="opt.value" [selected]="sort() === opt.value">{{ opt.label }}</option>
+                }
+              </select>
+            </label>
+
+            @if (hasRange()) {
+              <button
+                type="button"
+                class="text-sm text-gray-700 underline underline-offset-2 hover:text-black sm:mb-1.5"
+                (click)="clearRange()"
+              >
+                Clear dates
+              </button>
+            }
+          </div>
+        }
+      </header>
+
+      @if (loading()) {
+        <p class="text-sm text-gray-500">Loading…</p>
+      } @else if (error()) {
+        <p class="text-sm text-red-600">{{ error() }}</p>
+      } @else if (!posts().length) {
+        <p class="text-sm text-gray-500">No posts yet.</p>
+      } @else if (!groupedPosts().length) {
+        <p class="text-sm text-gray-500">No posts in that date range.</p>
+      } @else {
+        <div class="space-y-10">
+          @for (group of groupedPosts(); track group.key) {
+            <section
+              [attr.id]="'archive-' + group.key"
+              [attr.data-archive-year]="group.key.length >= 4 ? group.key.slice(0, 4) : null"
+              class="scroll-mt-6 space-y-4"
+            >
+              <div class="flex items-center gap-3">
+                <h2 class="text-sm font-semibold text-gray-500 whitespace-nowrap">
+                  {{ group.label }}
+                </h2>
+                <div class="h-px flex-1 bg-gray-200"></div>
+              </div>
+
+              <ul class="space-y-6">
+                @for (post of group.posts; track post.id) {
+                  <li class="border-b border-gray-100 pb-6 last:border-0">
+                    <a [routerLink]="['/blog', post.slug]" class="group block space-y-1">
+                      <h3 class="text-xl font-medium group-hover:underline">{{ post.title }}</h3>
+                      <p class="text-xs text-gray-500">
+                        {{ post.eventDate | date: 'MMMM d, y' }}
+                        @if (postedDiffers(post)) {
+                          <span class="opacity-70">
+                            · Posted {{ post.publishedAt | date: 'MMM d, y' }}
+                          </span>
+                        }
+                      </p>
+                      @if (post.excerpt) {
+                        <p class="text-gray-700 text-sm mt-2">{{ post.excerpt }}</p>
+                      }
+                    </a>
+                  </li>
+                }
+              </ul>
+            </section>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- GitHub-style year/month rail -->
+    @if (!loading() && archive().length) {
+      <aside class="lg:w-36 shrink-0">
+        <nav
+          class="lg:sticky lg:top-6 flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible pb-1 lg:pb-0"
+          aria-label="Jump to year or month"
+        >
+          <button
+            type="button"
+            class="text-left text-sm px-3 py-1.5 rounded-md whitespace-nowrap transition-colors"
+            [class]="
+              !archiveFocus()
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-600 hover:bg-gray-100'
+            "
+            (click)="selectAll()"
+          >
+            All
+          </button>
+
+          @for (year of archive(); track year.year) {
+            <div class="min-w-[7rem] lg:min-w-0">
+              <button
+                type="button"
+                class="w-full text-left text-sm px-3 py-1.5 rounded-md whitespace-nowrap transition-colors"
+                [class]="
+                  archiveFocus() === year.year
+                    ? 'bg-blue-600 text-white'
+                    : isYearActive(year.year)
+                      ? 'text-gray-900 font-medium'
+                      : 'text-gray-600 hover:bg-gray-100'
+                "
+                (click)="selectYear(year.year)"
+              >
+                {{ year.year }}
+              </button>
+
+              @if (isYearActive(year.year)) {
+                <div class="ml-2 mt-0.5 space-y-0.5 border-l border-gray-200 pl-2">
+                  @for (month of year.months; track month.key) {
+                    <button
+                      type="button"
+                      class="w-full text-left text-xs px-2 py-1 rounded transition-colors"
+                      [class]="
+                        isMonthActive(month.key)
+                          ? 'bg-blue-50 text-blue-700 font-medium'
+                          : 'text-gray-500 hover:bg-gray-100 hover:text-gray-800'
+                      "
+                      (click)="selectMonth(month.key)"
+                    >
+                      {{ month.label }}
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </nav>
+      </aside>
+    }
+  </div>
+</div>

@@ -1,0 +1,22 @@
+:root {
+  --primary-blue: #1E40AF;
+  --secondary-blue: #3B82F6;
+  --light-blue: #60A5FA;
+  --lighter-blue: #93C5FD;
+  --dark-blue: #1E3A8A;
+  --text-dark: #1F2937;
+  --text-light: #6B7280;
+  --background: #FFFFFF;
+  --background-light: #F8FAFC;
+  --gradient-primary: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue));
+  --gradient-light: linear-gradient(135deg, var(--light-blue), var(--lighter-blue));
+}
+
+.bg-gradient-primary { background: var(--gradient-primary); }
+.bg-gradient-light { background: var(--gradient-light); }
+.text-primary-blue { color: var(--primary-blue); }
+.text-secondary-blue { color: var(--secondary-blue); }
+.bg-primary-blue { background-color: var(--primary-blue); }
+.bg-secondary-blue { background-color: var(--secondary-blue); }
+.border-primary-blue { border-color: var(--primary-blue); }
+.border-secondary-blue { border-color: var(--secondary-blue); }

@@ -1,0 +1,305 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Portable blog API (drafts, publish, images, revisions)
+
+Parameters:
+  ProjectPrefix:
+    Type: String
+    Default: blog
+    Description: Prefix for AWS resource names (e.g. loganborn, dadname)
+  SiteOrigin:
+    Type: String
+    Default: http://localhost:4200
+    Description: Primary site origin for CORS (e.g. https://example.com)
+  ExtraOrigins:
+    Type: CommaDelimitedList
+    Default: "http://127.0.0.1:4200"
+    Description: Additional CORS origins
+  CognitoUserPoolId:
+    Type: String
+  CognitoClientId:
+    Type: String
+  AllowedEmails:
+    Type: String
+    Description: Comma-separated admin emails
+  MaxImagesPerPost:
+    Type: Number
+    Default: 12
+
+Globals:
+  Function:
+    Runtime: nodejs22.x
+    Timeout: 20
+    MemorySize: 256
+    Architectures:
+      - arm64
+
+Resources:
+  BlogPostsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${ProjectPrefix}-blog-posts
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: slug
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+        - AttributeName: eventDateKey
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: bySlug
+          KeySchema:
+            - AttributeName: slug
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: byStatusEventDate
+          KeySchema:
+            - AttributeName: status
+              KeyType: HASH
+            - AttributeName: eventDateKey
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  BlogPostRevisionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${ProjectPrefix}-blog-post-revisions
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: postId
+          AttributeType: S
+        - AttributeName: revisionId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: postId
+          KeyType: HASH
+        - AttributeName: revisionId
+          KeyType: RANGE
+
+  BlogMediaBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${ProjectPrefix}-blog-media-${AWS::AccountId}
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: false
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: false
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ['*']
+            AllowedMethods: [GET, PUT, HEAD]
+            AllowedOrigins: !ListAppend
+              - !Ref ExtraOrigins
+              - - !Ref SiteOrigin
+            MaxAge: 3000
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  BlogMediaBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref BlogMediaBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: PublicReadBlogMedia
+            Effect: Allow
+            Principal: '*'
+            Action: s3:GetObject
+            Resource: !Sub ${BlogMediaBucket.Arn}/*
+
+  BlogHttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: prod
+      CorsConfiguration:
+        AllowOrigins: !ListAppend
+          - !Ref ExtraOrigins
+          - - !Ref SiteOrigin
+        AllowHeaders:
+          - Authorization
+          - Content-Type
+        AllowMethods:
+          - GET
+          - POST
+          - PUT
+          - PATCH
+          - DELETE
+          - OPTIONS
+      Auth:
+        DefaultAuthorizer: CognitoJwt
+        Authorizers:
+          CognitoJwt:
+            JwtConfiguration:
+              issuer: !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${CognitoUserPoolId}
+              audience:
+                - !Ref CognitoClientId
+            IdentitySource: $request.header.Authorization
+
+  BlogFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${ProjectPrefix}-blog-api
+      CodeUri: src/
+      Handler: index.handler
+      Environment:
+        Variables:
+          POSTS_TABLE: !Ref BlogPostsTable
+          REVISIONS_TABLE: !Ref BlogPostRevisionsTable
+          MEDIA_BUCKET: !Ref BlogMediaBucket
+          ALLOWED_EMAILS: !Ref AllowedEmails
+          MAX_IMAGES_PER_POST: !Ref MaxImagesPerPost
+          COGNITO_USER_POOL_ID: !Ref CognitoUserPoolId
+          COGNITO_CLIENT_ID: !Ref CognitoClientId
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref BlogPostsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref BlogPostRevisionsTable
+        - S3CrudPolicy:
+            BucketName: !Ref BlogMediaBucket
+      Events:
+        PublicList:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref BlogHttpApi
+            Path: /posts
+            Method: GET
+            Auth:
+              Authorizer: NONE
+        PublicGet:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref BlogHttpApi
+            Path: /posts/{slug}
+            Method: GET
+            Auth:
+              Authorizer: NONE
+        PublicArchive:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref BlogHttpApi
+            Path: /archive/{year}
+            Method: GET
+            Auth:
+              Authorizer: NONE
+        PublicArchiveMonth:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref BlogHttpApi
+            Path: /archive/{year}/{month}
+            Method: GET
+            Auth:
+              Authorizer: NONE
+        AdminMe:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref BlogHttpApi
+            Path: /admin/me
+            Method: GET
+        AdminList:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref BlogHttpApi
+            Path: /admin/posts
+            Method: GET
+        AdminCreate:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref BlogHttpApi
+            Path: /admin/posts
+            Method: POST
+        AdminGet:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref BlogHttpApi
+            Path: /admin/posts/{id}
+            Method: GET
+        AdminUpdate:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref BlogHttpApi
+            Path: /admin/posts/{id}
+            Method: PUT
+        AdminPublish:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref BlogHttpApi
+            Path: /admin/posts/{id}/publish
+            Method: POST
+        AdminSchedule:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref BlogHttpApi
+            Path: /admin/posts/{id}/schedule
+            Method: POST
+        AdminUnschedule:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref BlogHttpApi
+            Path: /admin/posts/{id}/unschedule
+            Method: POST
+        AdminUnpublish:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref BlogHttpApi
+            Path: /admin/posts/{id}/unpublish
+            Method: POST
+        AdminDelete:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref BlogHttpApi
+            Path: /admin/posts/{id}
+            Method: DELETE
+        AdminListRevisions:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref BlogHttpApi
+            Path: /admin/posts/{id}/revisions
+            Method: GET
+        AdminGetRevision:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref BlogHttpApi
+            Path: /admin/posts/{id}/revisions/{revisionId}
+            Method: GET
+        AdminRestoreRevision:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref BlogHttpApi
+            Path: /admin/posts/{id}/revisions/{revisionId}/restore
+            Method: POST
+        AdminUpload:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref BlogHttpApi
+            Path: /admin/uploads
+            Method: POST
+        PublishDueSchedule:
+          Type: Schedule
+          Properties:
+            Schedule: rate(5 minutes)
+            Description: Publish blog posts whose scheduledFor time has passed
+            Input: '{"action":"publishDue","source":"aws.events"}'
+
+Outputs:
+  ApiUrl:
+    Description: Blog HTTP API endpoint
+    Value: !Sub https://${BlogHttpApi}.execute-api.${AWS::Region}.amazonaws.com/prod
+  PostsTableName:
+    Value: !Ref BlogPostsTable
+  RevisionsTableName:
+    Value: !Ref BlogPostRevisionsTable
+  MediaBucketName:
+    Value: !Ref BlogMediaBucket

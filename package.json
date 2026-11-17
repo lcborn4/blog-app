@@ -1,0 +1,55 @@
+{
+  "name": "blog-app",
+  "version": "1.0.0",
+  "license": "MIT",
+  "description": "Standalone Angular blog with Cognito admin and AWS SAM API (DynamoDB + S3)",
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve",
+    "build": "ng build --configuration production",
+    "test": "ng test",
+    "lint": "ng lint"
+  },
+  "private": true,
+  "dependencies": {
+    "@angular/animations": "^22.2.4",
+    "@angular/common": "^22.2.4",
+    "@angular/compiler": "^22.2.4",
+    "@angular/core": "^22.2.4",
+    "@angular/forms": "^22.2.4",
+    "@angular/platform-browser": "^22.2.4",
+    "@angular/platform-browser-dynamic": "^22.2.4",
+    "@angular/router": "^22.2.4",
+    "@tiptap/core": "^3.33.1",
+    "@tiptap/extension-image": "^3.33.1",
+    "@tiptap/extension-link": "^3.33.1",
+    "@tiptap/extension-placeholder": "^3.33.1",
+    "@tiptap/pm": "^3.33.1",
+    "@tiptap/starter-kit": "^3.33.1",
+    "rxjs": "^7.8.0",
+    "tslib": "^2.6.0",
+    "zone.js": "^0.15.1"
+  },
+  "devDependencies": {
+    "@angular-devkit/build-angular": "^22.2.5",
+    "@angular/cli": "^22.2.5",
+    "@angular/compiler-cli": "^22.2.4",
+    "@angular/language-service": "^22.2.4",
+    "@types/jasmine": "^5.1.0",
+    "@types/node": "^20.14.0",
+    "autoprefixer": "^10.4.21",
+    "jasmine-core": "^5.1.0",
+    "karma": "^6.4.0",
+    "karma-chrome-launcher": "^3.2.0",
+    "karma-coverage": "^2.2.0",
+    "karma-jasmine": "^5.1.0",
+    "karma-jasmine-html-reporter": "^2.1.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
+    "typescript": "~6.0.3"
+  },
+  "engines": {
+    "node": ">=22.22.3",
+    "npm": ">=9.0.0"
+  }
+}
