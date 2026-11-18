@@ -11,7 +11,7 @@ Same codebase can power multiple sites — different domains, AWS accounts, and 
 - Admin UI: drafts, TipTap editor, image upload, publish / schedule / unpublish
 - Revision history + restore
 - Google sign-in via Amazon Cognito (email allowlist)
-- Configurable site name and “home” link back to your main site
+- Configurable site name; optional “home” link if the blog sits under a larger site (omit for a standalone blog)
 
 ## Stack
 
@@ -52,7 +52,7 @@ Edit `src/environments/environment.ts` (local) / `environment.prod.ts` (CI):
 | Field | Purpose |
 |-------|---------|
 | `siteName` | Blog title / branding |
-| `siteHomeUrl` / `siteHomeLabel` | Link back to your main site |
+| `siteHomeUrl` / `siteHomeLabel` | Optional link back to a parent site; leave empty for a standalone blog |
 | `appBasePath` | App path prefix (default `/blog`) |
 | `blogApiUrl` | Deployed API base URL |
 | `cognito.*` | Pool, client, domain, redirect/logout URIs, email allowlist |
