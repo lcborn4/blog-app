@@ -19,6 +19,7 @@ import {
   BlogRevisionSummary,
   postedDayDiffers
 } from '../blog/blog-api.service';
+import { environment } from '../../environments/environment';
 import { RichTextEditorComponent } from './rich-text-editor.component';
 
 @Component({
@@ -33,8 +34,11 @@ import { RichTextEditorComponent } from './rich-text-editor.component';
           <h1 class="text-3xl font-semibold tracking-tight">Blog Admin</h1>
           <p class="text-sm text-gray-600 mt-1">Signed in as {{ auth.email() }}</p>
         </div>
-        <div class="flex gap-3">
-          <a routerLink="/blog" class="text-sm text-gray-600 hover:text-black">View blog</a>
+        <div class="flex flex-wrap gap-3">
+          @if (siteHomeUrl) {
+            <a [href]="siteHomeUrl" class="text-sm text-gray-600 hover:text-black">{{ siteHomeLabel }}</a>
+          }
+          <a routerLink="/" class="text-sm text-gray-600 hover:text-black">View blog</a>
           <button type="button" class="text-sm text-gray-600 hover:text-black" (click)="auth.logout()">
             Sign out
           </button>
@@ -238,7 +242,7 @@ import { RichTextEditorComponent } from './rich-text-editor.component';
                       </button>
                       <a
                         class="text-sm border rounded px-3 py-1 hover:bg-gray-50"
-                        [routerLink]="['/blog', post.slug]"
+                        [routerLink]="['/', post.slug]"
                         >View</a
                       >
                     }
@@ -511,6 +515,9 @@ export class AdminComponent implements OnInit, OnDestroy {
   private readonly api = inject(BlogApiService);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly editor = viewChild(RichTextEditorComponent);
+
+  readonly siteHomeUrl = environment.siteHomeUrl;
+  readonly siteHomeLabel = environment.siteHomeLabel || environment.siteName;
 
   readonly posts = signal<BlogPost[]>([]);
   readonly loading = signal(true);

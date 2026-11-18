@@ -8,6 +8,7 @@ import {
 } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { environment } from '../../environments/environment';
 import { BlogApiService, BlogPost, postedDayDiffers } from './blog-api.service';
 
 export type BlogSort = 'event-desc' | 'event-asc' | 'published-desc' | 'published-asc';
@@ -55,6 +56,9 @@ const MONTH_LABELS = [
 })
 export class BlogComponent implements OnInit {
   private readonly api = inject(BlogApiService);
+
+  readonly siteHomeUrl = environment.siteHomeUrl;
+  readonly siteHomeLabel = environment.siteHomeLabel || environment.siteName;
 
   readonly posts = signal<BlogPost[]>([]);
   readonly loading = signal(true);

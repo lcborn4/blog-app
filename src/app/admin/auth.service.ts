@@ -52,13 +52,22 @@ export class AuthService {
     return stored.idToken;
   }
 
+  /** Public URL prefix for this app (no trailing slash), e.g. /blog */
+  private appBasePath(): string {
+    return (environment as { appBasePath?: string }).appBasePath || '/blog';
+  }
+
   private redirectUri(): string {
     // Must match the page origin exactly (localhost ≠ 127.0.0.1) or PKCE sessionStorage is lost.
-    return `${window.location.origin}/admin`;
+    return `${window.location.origin}${this.appBasePath()}/admin`;
   }
 
   private logoutUri(): string {
-    return `${window.location.origin}/`;
+    return `${window.location.origin}${this.appBasePath()}/`;
+  }
+
+  private loginPath(): string {
+    return `${this.appBasePath()}/admin/login`;
   }
 
   async beginGoogleLogin(returnPath = '/admin'): Promise<void> {
@@ -98,7 +107,7 @@ export class AuthService {
     }
     const params = new URLSearchParams({
       client_id: environment.cognito.clientId,
-      logout_uri: `${window.location.origin}/admin/login`
+      logout_uri: `${window.location.origin}${this.loginPath()}`
     });
     window.location.href = `https://${environment.cognito.domain}/logout?${params}`;
   }

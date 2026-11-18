@@ -1,6 +1,17 @@
 # blog-app
 
-Live (Logan Born): https://blog.loganborn.com/blog
+Live (Logan Born): https://loganborn.com/blog · Admin: https://loganborn.com/blog/admin
+
+Public **source** repo for a portable Angular blog (Cognito admin + AWS SAM API). It is **not deployed from this repo**.
+
+## How loganborn.com ships it
+
+1. Push blog changes here (`main`)
+2. Push (or manually run) **wolverine** `master` deploy
+3. Wolverine’s GitHub Action checks out this repo, builds with wolverine secrets, syncs to the blog S3 bucket
+4. CloudFront on loganborn.com routes `/blog*` to that bucket; the portfolio links to `/blog`
+
+Secrets live only on **wolverine** (not here).
 
 A portable **Angular blog** with a Cognito-protected **admin** and an **AWS SAM** backend (API Gateway HTTP API, Lambda, DynamoDB, S3 media, scheduled publish).
 
@@ -40,26 +51,21 @@ npm install
 npm start
 ```
 
-Open `http://localhost:4200/blog` and `http://localhost:4200/admin`.
+Open `http://localhost:4200/blog` and `http://localhost:4200/blog/admin` (with `baseHref` `/blog/`).
 
 ## Deploy API (per site)
 
 1. Create a Cognito user pool + app client + Google IdP + hosted UI domain.
-2. Allowlist callback URLs: `https://YOUR_DOMAIN/admin`, `http://localhost:4200/admin` (and matching logout URLs).
+2. Allowlist callback URLs: `https://YOUR_DOMAIN/blog/admin`, localhost equivalents, and matching logout URLs under `/blog/`.
 3. From `api/blog`:
 
 ```bash
 npm install --prefix src
 sam build
 sam deploy --guided
-# or edit samconfig.toml parameter_overrides, then:
-sam deploy
 ```
 
-Parameters: `ProjectPrefix`, `SiteOrigin`, `ExtraOrigins`, `CognitoUserPoolId`, `CognitoClientId`, `AllowedEmails`.
-
-4. Copy the stack `ApiUrl` output into `environment.prod.ts` (and local env as needed).
-5. Build and host the Angular app (S3 + CloudFront, Amplify, etc.) on your domain.
+4. For loganborn.com frontend hosting, use **wolverine** CI — do not add deploy secrets to this public repo.
 
 ## Multi-site
 

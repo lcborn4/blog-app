@@ -3,6 +3,11 @@
     <!-- Main column -->
     <div class="min-w-0 flex-1 space-y-8">
       <header class="space-y-3">
+        @if (siteHomeUrl) {
+          <a [href]="siteHomeUrl" class="text-sm text-gray-600 hover:text-black inline-block">
+            ← {{ siteHomeLabel }}
+          </a>
+        }
         <div class="flex items-end justify-between gap-4">
           <h1 class="text-3xl font-semibold tracking-tight">Blog</h1>
           <button
@@ -93,7 +98,7 @@
               <ul class="space-y-6">
                 @for (post of group.posts; track post.id) {
                   <li class="border-b border-gray-100 pb-6 last:border-0">
-                    <a [routerLink]="['/blog', post.slug]" class="group block space-y-1">
+                    <a [routerLink]="['/', post.slug]" class="group block space-y-1">
                       <h3 class="text-xl font-medium group-hover:underline">{{ post.title }}</h3>
                       <p class="text-xs text-gray-500">
                         {{ post.eventDate | date: 'MMMM d, y' }}

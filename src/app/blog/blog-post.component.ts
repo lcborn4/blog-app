@@ -2,6 +2,7 @@ import { Component, ChangeDetectionStrategy, inject, OnInit, signal } from '@ang
 import { DatePipe } from '@angular/common';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { environment } from '../../environments/environment';
 import { BlogApiService, BlogPost, postedDayDiffers } from './blog-api.service';
 
 @Component({
@@ -11,7 +12,12 @@ import { BlogApiService, BlogPost, postedDayDiffers } from './blog-api.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <article class="max-w-3xl mx-auto px-4 py-10 space-y-6">
-      <a routerLink="/blog" class="text-sm text-gray-600 hover:text-black">← Blog</a>
+      <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600">
+        @if (siteHomeUrl) {
+          <a [href]="siteHomeUrl" class="hover:text-black">← {{ siteHomeLabel }}</a>
+        }
+        <a routerLink="/" class="hover:text-black">Blog</a>
+      </div>
 
       @if (loading()) {
         <p class="text-sm text-gray-500">Loading…</p>
@@ -52,6 +58,9 @@ export class BlogPostComponent implements OnInit {
   private readonly api = inject(BlogApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly sanitizer = inject(DomSanitizer);
+
+  readonly siteHomeUrl = environment.siteHomeUrl;
+  readonly siteHomeLabel = environment.siteHomeLabel || environment.siteName;
 
   readonly post = signal<BlogPost | null>(null);
   readonly loading = signal(true);

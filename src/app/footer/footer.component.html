@@ -1,3 +1,8 @@
-<footer class="bg-gray-100 text-center py-1.5 mt-auto">
-    <p class="text-xs text-gray-500">v{{version}}</p>
+<footer class="bg-gray-100 text-center py-3 mt-auto space-y-1">
+  @if (siteHomeUrl) {
+    <p class="text-sm text-gray-600">
+      <a [href]="siteHomeUrl" class="hover:text-black underline underline-offset-2">← {{ siteHomeLabel }}</a>
+    </p>
+  }
+  <p class="text-xs text-gray-500">v{{ version }}</p>
 </footer>
