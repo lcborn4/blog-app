@@ -1,10 +1,7 @@
 # Intentionally no deploy workflow.
-# blog-app is a public source repo. Production builds are pulled and deployed
-# by wolverine (.github/workflows/deploy.yml) using wolverine's GitHub secrets.
-#
-# To ship blog changes: merge to blog-app main, then push/redeploy wolverine master
-# (or run the wolverine "Deploy to AWS" workflow manually).
-name: No-op (deploy via wolverine)
+# This is a public source repo. Build and ship from your own CI/host project,
+# injecting production env from private secrets (keep useDemoData: false).
+name: No-op (deploy elsewhere)
 
 on:
   workflow_dispatch:
@@ -15,4 +12,4 @@ jobs:
     steps:
       - run: |
           echo "blog-app is not deployed from this repo."
-          echo "Deploy happens from lcborn4/wolverine on push to master."
+          echo "Build and deploy from your host project's CI with private secrets."

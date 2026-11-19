@@ -1,100 +1,61 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, of, throwError } from 'rxjs';
+import { delay } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { AuthService } from '../admin/auth.service';
+import { demoBlogStore } from './demo-blog.store';
 
-export type BlogStatus = 'draft' | 'scheduled' | 'published';
-
-/** True when the publish calendar day differs from the event date. */
-export function postedDayDiffers(eventDate: string, publishedAt?: string | null): boolean {
-  if (!publishedAt) return false;
-  const d = new Date(publishedAt);
-  if (Number.isNaN(d.getTime())) return false;
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const publishedDay = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  return publishedDay !== String(eventDate || '').slice(0, 10);
-}
-
-export interface BlogImage {
-  url: string;
-  alt?: string;
-  caption?: string;
-  key?: string;
-}
-
-export interface BlogPost {
-  id: string;
-  slug: string;
-  title: string;
-  excerpt: string;
-  body: unknown;
-  status?: BlogStatus;
-  eventDate: string;
-  publishedAt: string | null;
-  scheduledFor?: string | null;
-  updatedAt: string;
-  createdAt?: string;
-  coverImage: string | null;
-  images: BlogImage[];
-}
-
-export interface BlogPostInput {
-  title: string;
-  eventDate: string;
-  excerpt?: string;
-  slug?: string;
-  body?: unknown;
-  coverImage?: string | null;
-  images?: BlogImage[];
-}
-
-export type BlogRevisionAction =
-  | 'create'
-  | 'update'
-  | 'publish'
-  | 'unpublish'
-  | 'schedule'
-  | 'unschedule'
-  | 'restore';
-
-export interface BlogRevisionSummary {
-  revisionId: string;
-  postId: string;
-  action: BlogRevisionAction;
-  editedBy: string | null;
-  createdAt: string;
-  changedFields: string[];
-  title: string;
-  status: BlogStatus;
-  eventDate: string;
-}
-
-export interface BlogRevision extends BlogRevisionSummary {
-  excerpt: string;
-  body: unknown;
-  slug: string;
-  coverImage: string | null;
-  images: BlogImage[];
-  publishedAt: string | null;
-  scheduledFor: string | null;
-}
+export { postedDayDiffers } from './posted-day';
+export type {
+  BlogStatus,
+  BlogImage,
+  BlogPost,
+  BlogPostInput,
+  BlogRevisionAction,
+  BlogRevisionSummary,
+  BlogRevision
+} from './blog.types';
+import type {
+  BlogPost,
+  BlogPostInput,
+  BlogRevision,
+  BlogRevisionSummary
+} from './blog.types';
 
 @Injectable({ providedIn: 'root' })
 export class BlogApiService {
   private readonly http = inject(HttpClient);
   private readonly auth = inject(AuthService);
   private readonly baseUrl = environment.blogApiUrl;
+  private readonly demo = !!(environment as { useDemoData?: boolean }).useDemoData;
 
   listPublished(): Observable<{ posts: BlogPost[] }> {
+    if (this.demo) {
+      return of({ posts: demoBlogStore.listPublished() }).pipe(delay(120));
+    }
     return this.http.get<{ posts: BlogPost[] }>(`${this.baseUrl}/posts`);
   }
 
   getPublished(slug: string): Observable<{ post: BlogPost }> {
+    if (this.demo) {
+      const post = demoBlogStore.getPublished(slug);
+      return post
+        ? of({ post }).pipe(delay(80))
+        : throwError(() => ({ error: { error: 'Post not found' } }));
+    }
     return this.http.get<{ post: BlogPost }>(`${this.baseUrl}/posts/${encodeURIComponent(slug)}`);
   }
 
   listArchive(year: string, month?: string): Observable<{ posts: BlogPost[] }> {
+    if (this.demo) {
+      const posts = demoBlogStore.listPublished().filter((p) => {
+        const d = p.eventDate || '';
+        if (month) return d.startsWith(`${year}-${month}`);
+        return d.startsWith(year);
+      });
+      return of({ posts }).pipe(delay(80));
+    }
     const path = month
       ? `${this.baseUrl}/archive/${year}/${month}`
       : `${this.baseUrl}/archive/${year}`;
@@ -102,36 +63,65 @@ export class BlogApiService {
   }
 
   adminMe(): Observable<{ email: string }> {
+    if (this.demo) {
+      return of({ email: this.auth.email() || 'author@example.com' });
+    }
     return this.http.get<{ email: string }>(`${this.baseUrl}/admin/me`, {
       headers: this.authHeaders()
     });
   }
 
   adminList(): Observable<{ posts: BlogPost[] }> {
+    if (this.demo) {
+      return of({ posts: demoBlogStore.listAdmin() }).pipe(delay(100));
+    }
     return this.http.get<{ posts: BlogPost[] }>(`${this.baseUrl}/admin/posts`, {
       headers: this.authHeaders()
     });
   }
 
   adminGet(id: string): Observable<{ post: BlogPost }> {
+    if (this.demo) {
+      const post = demoBlogStore.getAdmin(id);
+      return post
+        ? of({ post })
+        : throwError(() => ({ error: { error: 'Post not found' } }));
+    }
     return this.http.get<{ post: BlogPost }>(`${this.baseUrl}/admin/posts/${id}`, {
       headers: this.authHeaders()
     });
   }
 
   createDraft(input: BlogPostInput): Observable<{ post: BlogPost }> {
+    if (this.demo) {
+      return of({ post: demoBlogStore.createDraft(input) }).pipe(delay(80));
+    }
     return this.http.post<{ post: BlogPost }>(`${this.baseUrl}/admin/posts`, input, {
       headers: this.authHeaders()
     });
   }
 
   updatePost(id: string, input: Partial<BlogPostInput>): Observable<{ post: BlogPost }> {
+    if (this.demo) {
+      try {
+        return of({ post: demoBlogStore.updatePost(id, input) }).pipe(delay(80));
+      } catch {
+        return throwError(() => ({ error: { error: 'Post not found' } }));
+      }
+    }
     return this.http.put<{ post: BlogPost }>(`${this.baseUrl}/admin/posts/${id}`, input, {
       headers: this.authHeaders()
     });
   }
 
   publish(id: string): Observable<{ post: BlogPost }> {
+    if (this.demo) {
+      try {
+        return of({ post: demoBlogStore.publish(id) }).pipe(delay(80));
+      } catch {
+        return throwError(() => ({ error: { error: 'Post not found' } }));
+      }
+    }
     return this.http.post<{ post: BlogPost }>(
       `${this.baseUrl}/admin/posts/${id}/publish`,
       {},
@@ -140,6 +130,13 @@ export class BlogApiService {
   }
 
   schedule(id: string, scheduledFor: string): Observable<{ post: BlogPost }> {
+    if (this.demo) {
+      try {
+        return of({ post: demoBlogStore.schedule(id, scheduledFor) }).pipe(delay(80));
+      } catch {
+        return throwError(() => ({ error: { error: 'Post not found' } }));
+      }
+    }
     return this.http.post<{ post: BlogPost }>(
       `${this.baseUrl}/admin/posts/${id}/schedule`,
       { scheduledFor },
@@ -148,6 +145,13 @@ export class BlogApiService {
   }
 
   unschedule(id: string): Observable<{ post: BlogPost }> {
+    if (this.demo) {
+      try {
+        return of({ post: demoBlogStore.unschedule(id) }).pipe(delay(80));
+      } catch {
+        return throwError(() => ({ error: { error: 'Post not found' } }));
+      }
+    }
     return this.http.post<{ post: BlogPost }>(
       `${this.baseUrl}/admin/posts/${id}/unschedule`,
       {},
@@ -156,6 +160,13 @@ export class BlogApiService {
   }
 
   unpublish(id: string): Observable<{ post: BlogPost }> {
+    if (this.demo) {
+      try {
+        return of({ post: demoBlogStore.unpublish(id) }).pipe(delay(80));
+      } catch {
+        return throwError(() => ({ error: { error: 'Post not found' } }));
+      }
+    }
     return this.http.post<{ post: BlogPost }>(
       `${this.baseUrl}/admin/posts/${id}/unpublish`,
       {},
@@ -164,12 +175,19 @@ export class BlogApiService {
   }
 
   deletePost(id: string): Observable<{ ok: boolean }> {
+    if (this.demo) {
+      demoBlogStore.deletePost(id);
+      return of({ ok: true }).pipe(delay(80));
+    }
     return this.http.delete<{ ok: boolean }>(`${this.baseUrl}/admin/posts/${id}`, {
       headers: this.authHeaders()
     });
   }
 
   listRevisions(id: string): Observable<{ revisions: BlogRevisionSummary[] }> {
+    if (this.demo) {
+      return of({ revisions: demoBlogStore.listRevisions(id) });
+    }
     return this.http.get<{ revisions: BlogRevisionSummary[] }>(
       `${this.baseUrl}/admin/posts/${id}/revisions`,
       { headers: this.authHeaders() }
@@ -177,6 +195,9 @@ export class BlogApiService {
   }
 
   getRevision(id: string, revisionId: string): Observable<{ revision: BlogRevision }> {
+    if (this.demo) {
+      return throwError(() => ({ error: { error: 'Demo mode: revision detail not available' } }));
+    }
     return this.http.get<{ revision: BlogRevision }>(
       `${this.baseUrl}/admin/posts/${id}/revisions/${encodeURIComponent(revisionId)}`,
       { headers: this.authHeaders() }
@@ -184,6 +205,9 @@ export class BlogApiService {
   }
 
   restoreRevision(id: string, revisionId: string): Observable<{ post: BlogPost }> {
+    if (this.demo) {
+      return throwError(() => ({ error: { error: 'Demo mode: restore not available' } }));
+    }
     return this.http.post<{ post: BlogPost }>(
       `${this.baseUrl}/admin/posts/${id}/revisions/${encodeURIComponent(revisionId)}/restore`,
       {},
@@ -197,6 +221,15 @@ export class BlogApiService {
     key: string;
     maxImagesPerPost: number;
   }> {
+    if (this.demo) {
+      const key = `demo/${Date.now()}`;
+      return of({
+        uploadUrl: '',
+        publicUrl: `https://placehold.co/600x400/png?text=${encodeURIComponent(contentType)}`,
+        key,
+        maxImagesPerPost: 12
+      });
+    }
     return this.http.post<{
       uploadUrl: string;
       publicUrl: string;

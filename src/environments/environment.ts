@@ -1,9 +1,10 @@
 export const environment = {
   production: false,
-  siteName: 'Blog',
-  /** Link back to the main personal/portfolio site */
-  siteHomeUrl: 'http://localhost:4200/',
-  siteHomeLabel: 'Logan Born',
+  /** Local sample posts + demo admin (no API / Cognito required). */
+  useDemoData: true,
+  siteName: 'Demo Blog',
+  siteHomeUrl: '',
+  siteHomeLabel: '',
   appBasePath: '/blog',
   blogApiUrl: 'https://YOUR_API_ID.execute-api.us-east-1.amazonaws.com/prod',
   cognito: {
@@ -13,6 +14,6 @@ export const environment = {
     domain: 'YOUR_PREFIX.auth.us-east-1.amazoncognito.com',
     redirectUri: 'http://localhost:4200/blog/admin',
     logoutUri: 'http://localhost:4200/blog/',
-    allowedEmails: ['you@example.com']
+    allowedEmails: ['author@example.com']
   }
 };

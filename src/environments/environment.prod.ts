@@ -1,8 +1,9 @@
 export const environment = {
   production: true,
+  useDemoData: false,
   siteName: 'Blog',
-  siteHomeUrl: 'https://loganborn.com/',
-  siteHomeLabel: 'Logan Born',
+  siteHomeUrl: '',
+  siteHomeLabel: '',
   appBasePath: '/blog',
   blogApiUrl: 'https://YOUR_API_ID.execute-api.us-east-1.amazonaws.com/prod',
   cognito: {

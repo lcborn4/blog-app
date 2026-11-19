@@ -4,6 +4,32 @@ A portable **Angular blog** with Cognito-protected **admin** and an **AWS SAM** 
 
 Same codebase can power multiple sites — different domains, AWS accounts, and branding — via environment config. This repo is intended as **source you build and deploy from your own CI**; keep secrets out of the public tree.
 
+## How it looks
+
+Local **demo mode** (`useDemoData: true`) ships example posts so you can run the UI without an API. GIFs below were captured from that mode.
+
+### Browse the index
+
+Archive rail + sort/date filters:
+
+![Browsing the blog index and archive rail](docs/gifs/browse-index.gif)
+
+### Open a post
+
+![Opening a post and returning to the index](docs/gifs/open-post.gif)
+
+### Admin (demo sign-in)
+
+Drafts, scheduled, and published posts — edit without Cognito when demo mode is on:
+
+![Admin post list and edit mode](docs/gifs/admin-posts.gif)
+
+Regenerate GIFs (with `npm start` running):
+
+```bash
+npm run capture:gifs
+```
+
 ## Features
 
 - Public blog index with date filters and year/month archive rail
@@ -12,6 +38,7 @@ Same codebase can power multiple sites — different domains, AWS accounts, and 
 - Revision history + restore
 - Google sign-in via Amazon Cognito (email allowlist)
 - Configurable site name; optional “home” link if the blog sits under a larger site (omit for a standalone blog)
+- Local demo data + example posts (`src/app/blog/example-posts.ts`)
 
 ## Stack
 
@@ -25,25 +52,32 @@ Same codebase can power multiple sites — different domains, AWS accounts, and 
 ## Repo layout
 
 ```
-src/app/blog/     Public blog UI + API client
+src/app/blog/     Public blog UI + API client + example/demo posts
 src/app/admin/    Login, auth, admin editor
 api/blog/         SAM template + Lambda handler
 src/environments/ Per-deploy config (API URL, Cognito, allowlist, home link)
+docs/gifs/        README demo captures
+scripts/          GIF capture + example-post tests
 ```
 
 ## Quick start (frontend)
 
 ```bash
 npm install
-# Copy src/environments/environment.example.ts → environment.ts
-# Fill in your API URL, Cognito, and site home values
 npm start
 ```
 
-With `baseHref` `/blog/`, open:
+With `useDemoData: true` (default in `environment.ts`), open:
 
-- `http://localhost:4200/blog`
-- `http://localhost:4200/blog/admin`
+- `http://localhost:4200/blog` — example posts
+- `http://localhost:4200/blog/admin` — demo admin (no Google login)
+
+To talk to a real API instead, set `useDemoData: false` and fill Cognito + `blogApiUrl` (see `environment.example.ts`).
+
+```bash
+npm test                 # example posts + demo store
+npm run capture:gifs     # refresh README GIFs (server must be up)
+```
 
 ## Configure a site
 
@@ -51,6 +85,7 @@ Edit `src/environments/environment.ts` (local) / `environment.prod.ts` (CI):
 
 | Field | Purpose |
 |-------|---------|
+| `useDemoData` | In-memory example posts + demo admin (no API/Cognito) |
 | `siteName` | Blog title / branding |
 | `siteHomeUrl` / `siteHomeLabel` | Optional link back to a parent site; leave empty for a standalone blog |
 | `appBasePath` | App path prefix (default `/blog`) |
@@ -78,7 +113,7 @@ Use a unique stack/prefix per site so tables, buckets, and APIs stay isolated.
 Build this app in your host project’s pipeline (or a private deploy repo), inject production env from secrets, then sync `dist/` to S3 (or your static host). Typical pattern:
 
 1. Check out this repo at a pinned ref.
-2. Write `environment.prod.ts` from CI secrets.
+2. Write `environment.prod.ts` from CI secrets (`useDemoData: false`).
 3. `npm ci && npx ng build --configuration production`
 4. Upload `dist/` and invalidate your CDN.
 5. If the blog lives under a path on an existing domain (e.g. `/blog`), point CDN path rules at the blog origin; keep SPA routing working for `/blog` and `/blog/*`.

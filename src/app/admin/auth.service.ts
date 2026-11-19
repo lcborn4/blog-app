@@ -43,6 +43,9 @@ export class AuthService {
   }
 
   getIdToken(): string | null {
+    if (this.useDemoData()) {
+      return 'demo-id-token';
+    }
     const stored = this.readStore();
     if (!stored) return null;
     if (Date.now() >= stored.expiresAt - 30_000) {
@@ -50,6 +53,10 @@ export class AuthService {
       return null;
     }
     return stored.idToken;
+  }
+
+  private useDemoData(): boolean {
+    return !!(environment as { useDemoData?: boolean }).useDemoData;
   }
 
   /** Public URL prefix for this app (no trailing slash), e.g. /blog */
@@ -71,6 +78,12 @@ export class AuthService {
   }
 
   async beginGoogleLogin(returnPath = '/admin'): Promise<void> {
+    if (this.useDemoData()) {
+      this.email.set('author@example.com');
+      this.isAuthenticated.set(true);
+      window.location.assign(`${this.appBasePath()}${returnPath.startsWith('/') ? returnPath : `/${returnPath}`}`);
+      return;
+    }
     const verifier = this.randomString(64);
     const challenge = await this.pkceChallenge(verifier);
     const state = this.randomString(24);
@@ -90,26 +103,25 @@ export class AuthService {
       identity_provider: 'Google',
       code_challenge_method: 'S256',
       code_challenge: challenge,
-      state,
-      // Always show Google's account picker so a wrong allowlisted attempt can switch accounts.
-      prompt: 'select_account'
+      state
     });
 
-    window.location.href = `https://${environment.cognito.domain}/oauth2/authorize?${params}`;
+    window.location.href = `https://${environment.cognito.domain}/oauth2/authorize?${params.toString()}`;
   }
 
-  /** Clear Cognito/Google session, then land on the login page (optional error). */
+  /** Clear Cognito/Google session, then land on an allowlisted logout URL (optional error). */
   clearFederatedSession(error?: string): void {
     this.clear();
     // Cognito logout_uri must match an allowlisted URL exactly (no query string).
     if (error) {
       sessionStorage.setItem(LOGIN_ERROR_KEY, error);
     }
+    // Must be an exact Cognito Logout URL (we register /blog/admin/login + /blog/).
     const params = new URLSearchParams({
       client_id: environment.cognito.clientId,
       logout_uri: `${window.location.origin}${this.loginPath()}`
     });
-    window.location.href = `https://${environment.cognito.domain}/logout?${params}`;
+    window.location.href = `https://${environment.cognito.domain}/logout?${params.toString()}`;
   }
 
   consumeLoginError(): string | null {
@@ -212,6 +224,10 @@ export class AuthService {
 
   logout(): void {
     this.clear();
+    if (this.useDemoData()) {
+      window.location.assign(this.logoutUri());
+      return;
+    }
     const params = new URLSearchParams({
       client_id: environment.cognito.clientId,
       logout_uri: this.logoutUri()
@@ -220,6 +236,11 @@ export class AuthService {
   }
 
   private hydrate(): void {
+    if (this.useDemoData()) {
+      this.email.set('author@example.com');
+      this.isAuthenticated.set(true);
+      return;
+    }
     const stored = this.readStore();
     if (!stored) {
       this.isAuthenticated.set(false);

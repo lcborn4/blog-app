@@ -3,6 +3,8 @@
  */
 export const environment = {
   production: false,
+  /** true = in-memory example posts + demo admin (no API/Cognito). */
+  useDemoData: false,
   siteName: 'My Blog',
   siteHomeUrl: 'https://example.com/',
   siteHomeLabel: 'My Site',
