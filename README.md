@@ -8,7 +8,7 @@ Author: Logan Born · License: MIT
 
 ## How it looks
 
-Local **demo mode** (`useDemoData: true`) ships example posts so you can run the UI without an API. GIFs below were captured from that mode.
+Short demos of the public blog and admin (from local demo mode):
 
 ### Browse the index
 
@@ -20,16 +20,11 @@ Archive rail + sort/date filters:
 
 ![Opening a post and returning to the index](docs/gifs/open-post.gif)
 
-### Admin (demo sign-in)
+### Admin
 
-Drafts, scheduled, and published posts — edit without Cognito when demo mode is on:
+Drafts, scheduled, and published posts:
 
 ![Admin post list and edit mode](docs/gifs/admin-posts.gif)
-
-```bash
-npm start                 # then open /blog and /blog/admin
-npm run capture:gifs      # refresh GIFs (server must be running)
-```
 
 ## Features
 
@@ -58,8 +53,8 @@ src/app/blog/     Public UI, API client, example/demo posts
 src/app/admin/    Login, auth, TipTap editor
 api/blog/         SAM template + Lambda handler
 src/environments/ Per-deploy config
-docs/gifs/        README demo captures
-scripts/          GIF capture + example-post tests
+docs/gifs/        README demos
+scripts/          Example-post tests
 ```
 
 ## Quick start
@@ -80,7 +75,6 @@ For a real backend, set `useDemoData: false` and fill Cognito + `blogApiUrl` (se
 
 ```bash
 npm test                 # example posts + demo store
-npm run capture:gifs     # regenerate README GIFs
 ```
 
 ## Configure a site

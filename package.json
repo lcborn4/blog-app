@@ -1,6 +1,6 @@
 {
   "name": "blog-app",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "license": "MIT",
   "author": "Logan Born",
   "description": "Standalone Angular blog with Cognito admin and AWS SAM API (DynamoDB + S3)",
