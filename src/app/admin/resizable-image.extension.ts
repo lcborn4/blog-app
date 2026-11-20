@@ -1,6 +1,14 @@
 import Image from '@tiptap/extension-image';
+import { mergeAttributes } from '@tiptap/core';
 import type { Editor, NodeViewRendererProps } from '@tiptap/core';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
+import type { ImageLayout } from '../blog/blog-config';
+
+declare module '@tiptap/extension-image' {
+  interface ImageOptions {
+    layout: ImageLayout;
+  }
+}
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
@@ -18,9 +26,32 @@ function normalizeWidth(value: string | null | undefined): string | null {
   return trimmed;
 }
 
-function applyWidth(dom: HTMLElement, img: HTMLImageElement, width: string | null | undefined): void {
+function applyWidth(
+  dom: HTMLElement,
+  img: HTMLImageElement,
+  width: string | null | undefined,
+  layout: ImageLayout
+): void {
   const next = normalizeWidth(width) || '100%';
   dom.style.width = next;
+  dom.style.maxWidth = '100%';
+  if (layout === 'column') {
+    dom.style.display = 'block';
+    dom.style.marginLeft = 'auto';
+    dom.style.marginRight = 'auto';
+    dom.style.marginTop = '1.25rem';
+    dom.style.marginBottom = '1.25rem';
+    dom.style.textAlign = 'center';
+    dom.style.verticalAlign = '';
+  } else {
+    dom.style.display = 'inline-block';
+    dom.style.marginLeft = '0';
+    dom.style.marginRight = '1rem';
+    dom.style.marginTop = '0.5rem';
+    dom.style.marginBottom = '0.5rem';
+    dom.style.textAlign = '';
+    dom.style.verticalAlign = 'top';
+  }
   img.style.width = '100%';
   img.style.height = 'auto';
   img.style.maxWidth = '100%';
@@ -52,7 +83,7 @@ function reselect(editor: Editor, getPos: NodeViewRendererProps['getPos']): void
 function createImageToolbar(
   editor: Editor,
   getPos: NodeViewRendererProps['getPos'],
-  getAlt: () => string,
+  onCaption: () => void,
   onInteract: (active: boolean) => void
 ): HTMLElement {
   const toolbar = document.createElement('div');
@@ -90,7 +121,6 @@ function createImageToolbar(
         .setNodeSelection(pos)
         .run();
       reselect(editor, getPos);
-      // Keep menu open; release lock shortly after selection is restored.
       window.setTimeout(() => onInteract(false), 50);
     });
     toolbar.appendChild(btn);
@@ -100,108 +130,19 @@ function createImageToolbar(
   divider.className = 'rte-image-toolbar-divider';
   toolbar.appendChild(divider);
 
-  const altWrap = document.createElement('div');
-  altWrap.className = 'rte-image-alt-wrap';
-
-  const altBtn = document.createElement('button');
-  altBtn.type = 'button';
-  altBtn.className = 'rte-image-toolbar-btn';
-  altBtn.textContent = 'Alt';
-  altBtn.title = 'Edit alt text';
-
-  const altPanel = document.createElement('div');
-  altPanel.className = 'rte-image-alt-panel';
-  altPanel.hidden = true;
-
-  const altInput = document.createElement('input');
-  altInput.type = 'text';
-  altInput.className = 'rte-image-alt-input';
-  altInput.placeholder = 'Describe this image';
-
-  const altActions = document.createElement('div');
-  altActions.className = 'rte-image-alt-actions';
-
-  const closeAlt = () => {
-    altPanel.hidden = true;
-    onInteract(false);
-    reselect(editor, getPos);
-  };
-
-  const cancelBtn = document.createElement('button');
-  cancelBtn.type = 'button';
-  cancelBtn.textContent = 'Cancel';
-  cancelBtn.addEventListener('mousedown', (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    closeAlt();
-  });
-
-  const saveBtn = document.createElement('button');
-  saveBtn.type = 'button';
-  saveBtn.className = 'is-primary';
-  saveBtn.textContent = 'Save';
-  saveBtn.addEventListener('mousedown', (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    const pos = currentPos(getPos);
-    if (pos === null) return;
-    const alt = altInput.value.trim();
-    editor
-      .chain()
-      .setNodeSelection(pos)
-      .updateAttributes('image', { alt, title: alt })
-      .setNodeSelection(pos)
-      .run();
-    altPanel.hidden = true;
-    onInteract(false);
-    reselect(editor, getPos);
-  });
-
-  altActions.appendChild(cancelBtn);
-  altActions.appendChild(saveBtn);
-  altPanel.appendChild(altInput);
-  altPanel.appendChild(altActions);
-
-  altBtn.addEventListener('mousedown', (event) => {
+  const captionBtn = document.createElement('button');
+  captionBtn.type = 'button';
+  captionBtn.className = 'rte-image-toolbar-btn';
+  captionBtn.textContent = 'Caption';
+  captionBtn.title = 'Edit caption';
+  captionBtn.addEventListener('mousedown', (event) => {
     event.preventDefault();
     event.stopPropagation();
     onInteract(true);
-    altInput.value = getAlt();
-    altPanel.hidden = !altPanel.hidden;
-    if (!altPanel.hidden) {
-      queueMicrotask(() => {
-        altInput.focus();
-        reselect(editor, getPos);
-      });
-    } else {
-      onInteract(false);
-      reselect(editor, getPos);
-    }
+    onCaption();
   });
+  toolbar.appendChild(captionBtn);
 
-  // Focusing the input would normally clear node selection — keep menu locked open.
-  altInput.addEventListener('focus', () => onInteract(true));
-  altInput.addEventListener('mousedown', (event) => {
-    event.stopPropagation();
-    onInteract(true);
-  });
-
-  altInput.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      saveBtn.dispatchEvent(new MouseEvent('mousedown', { bubbles: false, cancelable: true }));
-    }
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      closeAlt();
-    }
-  });
-
-  altWrap.appendChild(altBtn);
-  altWrap.appendChild(altPanel);
-  toolbar.appendChild(altWrap);
-
-  // Any pointer interaction inside the toolbar should keep selection locked.
   toolbar.addEventListener(
     'pointerdown',
     (event) => {
@@ -217,34 +158,142 @@ function createImageToolbar(
 export const ResizableImage = Image.extend({
   name: 'image',
 
-  inline: true,
-  group: 'inline',
+  addOptions() {
+    return {
+      ...this.parent!(),
+      /** Set from environment.imageLayout at editor bootstrap. */
+      layout: 'column' as ImageLayout
+    };
+  },
+
+  inline() {
+    return this.options.layout === 'inline';
+  },
+
+  group() {
+    return this.options.layout === 'inline' ? 'inline' : 'block';
+  },
+
   draggable: true,
+  atom: true,
 
   addAttributes() {
     return {
       ...this.parent?.(),
       width: {
         default: '100%',
-        parseHTML: (element: HTMLElement) =>
-          normalizeWidth(element.getAttribute('width') || element.style.width) || '100%',
-        renderHTML: (attributes: { width?: string | null }) => {
-          const width = normalizeWidth(attributes.width) || '100%';
-          return {
-            width,
-            style: `width: ${width}; height: auto; max-width: 100%;`
-          };
-        }
+        parseHTML: (element: HTMLElement) => {
+          const img =
+            element.tagName === 'IMG'
+              ? element
+              : element.querySelector?.('img') || element;
+          return (
+            normalizeWidth(
+              (img as HTMLElement).getAttribute?.('width') ||
+                (img as HTMLElement).style?.width
+            ) || '100%'
+          );
+        },
+        renderHTML: () => ({})
+      },
+      caption: {
+        default: null,
+        parseHTML: (element: HTMLElement) => {
+          if (element.tagName === 'FIGURE') {
+            return element.querySelector('figcaption')?.textContent?.trim() || null;
+          }
+          return (
+            element.getAttribute('data-caption') ||
+            element.getAttribute('title') ||
+            null
+          );
+        },
+        renderHTML: () => ({})
       },
       title: {
         default: null,
-        parseHTML: (element: HTMLElement) => element.getAttribute('title'),
-        renderHTML: (attributes: { title?: string | null; alt?: string | null }) => {
-          const title = attributes.title || attributes.alt;
+        parseHTML: (element: HTMLElement) => {
+          const img =
+            element.tagName === 'IMG'
+              ? element
+              : element.querySelector?.('img') || element;
+          return (img as HTMLElement).getAttribute?.('title');
+        },
+        renderHTML: (attributes: { title?: string | null; caption?: string | null; alt?: string | null }) => {
+          const title = attributes.title || attributes.caption || attributes.alt;
           return title ? { title } : {};
         }
       }
     };
+  },
+
+  parseHTML() {
+    return [
+      {
+        tag: 'figure.blog-figure',
+        getAttrs: (node) => {
+          const element = node as HTMLElement;
+          const img = element.querySelector('img');
+          if (!img) return false;
+          return {
+            src: img.getAttribute('src'),
+            alt: img.getAttribute('alt'),
+            title: img.getAttribute('title'),
+            width:
+              normalizeWidth(
+                element.style.width ||
+                  img.getAttribute('width') ||
+                  img.style.width
+              ) || '100%',
+            caption: element.querySelector('figcaption')?.textContent?.trim() || null
+          };
+        }
+      },
+      {
+        tag: 'img[src]'
+      }
+    ];
+  },
+
+  renderHTML({ node, HTMLAttributes }) {
+    const layout = (this.options.layout as ImageLayout) || 'column';
+    const width = normalizeWidth(node.attrs['width']) || '100%';
+    const caption =
+      typeof node.attrs['caption'] === 'string' ? node.attrs['caption'].trim() : '';
+    const alt = (HTMLAttributes['alt'] as string | undefined) || caption || null;
+    const title =
+      (HTMLAttributes['title'] as string | undefined) || caption || alt || null;
+
+    const imgAttrs = mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {
+      class: 'blog-image',
+      style: 'width: 100%; height: auto; max-width: 100%;',
+      ...(alt ? { alt } : {}),
+      ...(title ? { title } : {})
+    });
+    delete imgAttrs['caption'];
+    delete imgAttrs['data-caption'];
+    delete imgAttrs['width'];
+
+    const figureAttrs =
+      layout === 'column'
+        ? {
+            class: 'blog-figure',
+            style: `width: ${width}; max-width: 100%; margin-left: auto; margin-right: auto;`
+          }
+        : {
+            class: 'blog-figure',
+            style: `width: ${width}; max-width: 100%; display: inline-block; vertical-align: top; margin: 0.5rem 1rem 0.5rem 0;`
+          };
+
+    if (caption) {
+      return [
+        'figure',
+        figureAttrs,
+        ['img', imgAttrs],
+        ['figcaption', {}, caption]
+      ];
+    }
+    return ['figure', figureAttrs, ['img', imgAttrs]];
   },
 
   addCommands() {
@@ -261,25 +310,39 @@ export const ResizableImage = Image.extend({
     return ({ node, editor, getPos }: NodeViewRendererProps) => {
       let currentNode: ProseMirrorNode = node;
       let menuLocked = false;
+      const layout = (this.options.layout as ImageLayout) || 'column';
 
-      const dom = document.createElement('span');
-      dom.className = 'rte-image-node';
-      dom.style.display = 'inline-block';
+      const dom = document.createElement('figure');
+      dom.className = `rte-image-node blog-figure rte-image-layout-${layout}`;
       dom.style.position = 'relative';
-      dom.style.lineHeight = '0';
       dom.style.maxWidth = '100%';
-      dom.style.verticalAlign = 'top';
-      dom.style.margin = '0.5rem 1rem 0.5rem 0';
       dom.style.boxSizing = 'border-box';
+
+      const frame = document.createElement('div');
+      frame.className = 'rte-image-frame';
+      frame.style.position = 'relative';
+      frame.style.lineHeight = '0';
+      frame.style.width = '100%';
 
       const img = document.createElement('img');
       img.className = 'blog-image';
       img.src = currentNode.attrs['src'] || '';
-      img.alt = currentNode.attrs['alt'] || '';
-      img.title = currentNode.attrs['title'] || currentNode.attrs['alt'] || '';
+      img.alt = currentNode.attrs['alt'] || currentNode.attrs['caption'] || '';
+      img.title =
+        currentNode.attrs['title'] ||
+        currentNode.attrs['caption'] ||
+        currentNode.attrs['alt'] ||
+        '';
       img.draggable = false;
       img.style.borderRadius = '0.375rem';
-      applyWidth(dom, img, currentNode.attrs['width']);
+      applyWidth(dom, img, currentNode.attrs['width'], layout);
+
+      const captionInput = document.createElement('input');
+      captionInput.type = 'text';
+      captionInput.className = 'rte-image-caption-input';
+      captionInput.placeholder = 'Add a caption…';
+      captionInput.value = String(currentNode.attrs['caption'] || '');
+      captionInput.setAttribute('contenteditable', 'false');
 
       const setMenuLocked = (active: boolean) => {
         menuLocked = active;
@@ -288,10 +351,52 @@ export const ResizableImage = Image.extend({
         }
       };
 
+      const saveCaption = () => {
+        const pos = currentPos(getPos);
+        if (pos === null) return;
+        const caption = captionInput.value.trim();
+        const fallbackAlt = String(currentNode.attrs['alt'] || '');
+        editor
+          .chain()
+          .setNodeSelection(pos)
+          .updateAttributes('image', {
+            caption: caption || null,
+            alt: caption || fallbackAlt || null,
+            title: caption || fallbackAlt || null
+          })
+          .setNodeSelection(pos)
+          .run();
+        setMenuLocked(false);
+        reselect(editor, getPos);
+      };
+
+      captionInput.addEventListener('focus', () => setMenuLocked(true));
+      captionInput.addEventListener('mousedown', (event) => {
+        event.stopPropagation();
+        setMenuLocked(true);
+      });
+      captionInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          captionInput.blur();
+        }
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          captionInput.value = String(currentNode.attrs['caption'] || '');
+          captionInput.blur();
+        }
+      });
+      captionInput.addEventListener('blur', () => {
+        saveCaption();
+      });
+
       const toolbar = createImageToolbar(
         editor,
         getPos,
-        () => String(currentNode.attrs['alt'] || ''),
+        () => {
+          captionInput.focus();
+          captionInput.select();
+        },
         setMenuLocked
       );
       syncWidthButtons(toolbar, currentNode.attrs['width']);
@@ -314,7 +419,7 @@ export const ResizableImage = Image.extend({
         const nextPx = Math.min(containerWidth(), Math.max(80, startWidth + delta));
         const pct = Math.round((nextPx / containerWidth()) * 100);
         const clamped = Math.min(100, Math.max(10, pct));
-        applyWidth(dom, img, `${clamped}%`);
+        applyWidth(dom, img, `${clamped}%`, layout);
       };
 
       const stopResize = (event: PointerEvent) => {
@@ -329,7 +434,12 @@ export const ResizableImage = Image.extend({
 
         const pos = currentPos(getPos);
         if (pos !== null) {
-          editor.chain().setNodeSelection(pos).updateAttributes('image', { width }).setNodeSelection(pos).run();
+          editor
+            .chain()
+            .setNodeSelection(pos)
+            .updateAttributes('image', { width })
+            .setNodeSelection(pos)
+            .run();
         }
         setMenuLocked(false);
         reselect(editor, getPos);
@@ -347,9 +457,11 @@ export const ResizableImage = Image.extend({
         window.addEventListener('pointerup', stopResize);
       });
 
-      dom.appendChild(img);
-      dom.appendChild(toolbar);
-      dom.appendChild(handle);
+      frame.appendChild(img);
+      frame.appendChild(toolbar);
+      frame.appendChild(handle);
+      dom.appendChild(frame);
+      dom.appendChild(captionInput);
 
       return {
         dom,
@@ -359,26 +471,28 @@ export const ResizableImage = Image.extend({
           syncWidthButtons(toolbar, currentNode.attrs['width']);
         },
         deselectNode: () => {
-          // Clicking Size/Alt temporarily clears PM selection — keep menu open while locked
-          // or while the alt field is focused.
-          const altPanel = toolbar.querySelector<HTMLElement>('.rte-image-alt-panel');
-          const altOpen = !!altPanel && !altPanel.hidden;
-          if (menuLocked || altOpen || toolbar.contains(document.activeElement)) {
+          if (menuLocked || document.activeElement === captionInput) {
             dom.classList.add('is-selected');
             reselect(editor, getPos);
             return;
           }
           dom.classList.remove('is-selected');
-          if (altPanel) altPanel.hidden = true;
         },
         update: (updatedNode) => {
           if (updatedNode.type.name !== 'image') return false;
           currentNode = updatedNode;
           img.src = updatedNode.attrs['src'] || '';
-          img.alt = updatedNode.attrs['alt'] || '';
-          img.title = updatedNode.attrs['title'] || updatedNode.attrs['alt'] || '';
-          applyWidth(dom, img, updatedNode.attrs['width']);
+          img.alt = updatedNode.attrs['alt'] || updatedNode.attrs['caption'] || '';
+          img.title =
+            updatedNode.attrs['title'] ||
+            updatedNode.attrs['caption'] ||
+            updatedNode.attrs['alt'] ||
+            '';
+          applyWidth(dom, img, updatedNode.attrs['width'], layout);
           syncWidthButtons(toolbar, updatedNode.attrs['width']);
+          if (document.activeElement !== captionInput) {
+            captionInput.value = String(updatedNode.attrs['caption'] || '');
+          }
           if (menuLocked) {
             dom.classList.add('is-selected');
           }

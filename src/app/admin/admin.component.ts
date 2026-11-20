@@ -20,6 +20,7 @@ import {
   postedDayDiffers
 } from '../blog/blog-api.service';
 import { environment } from '../../environments/environment';
+import { imageLayout } from '../blog/blog-config';
 import { RichTextEditorComponent } from './rich-text-editor.component';
 
 @Component({
@@ -433,6 +434,8 @@ import { RichTextEditorComponent } from './rich-text-editor.component';
                   @if (revisionBodyHtml()) {
                     <div
                       class="prose prose-neutral max-w-none post-preview-body"
+                      [class.image-layout-column]="layout === 'column'"
+                      [class.image-layout-inline]="layout === 'inline'"
                       [innerHTML]="revisionBodyHtml()"
                     ></div>
                   } @else {
@@ -488,7 +491,12 @@ import { RichTextEditorComponent } from './rich-text-editor.component';
             </header>
 
             @if (previewBody()) {
-              <div class="prose prose-neutral max-w-none post-preview-body" [innerHTML]="previewBody()"></div>
+              <div
+                class="prose prose-neutral max-w-none post-preview-body"
+                [class.image-layout-column]="layout === 'column'"
+                [class.image-layout-inline]="layout === 'inline'"
+                [innerHTML]="previewBody()"
+              ></div>
             } @else {
               <p class="text-sm text-gray-500">Nothing to preview yet — add a subject and some text.</p>
             }
@@ -499,13 +507,52 @@ import { RichTextEditorComponent } from './rich-text-editor.component';
   `,
   styles: [
     `
-      :host ::ng-deep .post-preview-body img {
+      :host ::ng-deep .post-preview-body.image-layout-column .blog-figure,
+      :host ::ng-deep .post-preview-body.image-layout-column figure {
+        display: block;
+        margin: 1.75rem auto;
+        max-width: 100%;
+        text-align: center;
+      }
+      :host ::ng-deep .post-preview-body.image-layout-column .blog-figure img,
+      :host ::ng-deep .post-preview-body.image-layout-column figure img,
+      :host ::ng-deep .post-preview-body.image-layout-column img {
+        display: block;
+        width: auto;
+        max-width: 100%;
+        height: auto;
+        margin-left: auto;
+        margin-right: auto;
+        border-radius: 0.375rem;
+      }
+      :host ::ng-deep .post-preview-body.image-layout-column figcaption {
+        margin-top: 0.6rem;
+        font-size: 0.9375rem;
+        line-height: 1.45;
+        color: #57606a;
+        text-align: center;
+      }
+      :host ::ng-deep .post-preview-body.image-layout-inline .blog-figure,
+      :host ::ng-deep .post-preview-body.image-layout-inline figure {
         display: inline-block;
+        margin: 0.5rem 1rem 0.5rem 0;
+        max-width: 100%;
+        vertical-align: top;
+        text-align: left;
+      }
+      :host ::ng-deep .post-preview-body.image-layout-inline .blog-figure img,
+      :host ::ng-deep .post-preview-body.image-layout-inline figure img,
+      :host ::ng-deep .post-preview-body.image-layout-inline img {
+        display: block;
         max-width: 100%;
         height: auto;
         border-radius: 0.375rem;
-        margin: 0.5rem 1rem 0.5rem 0;
-        vertical-align: top;
+      }
+      :host ::ng-deep .post-preview-body.image-layout-inline figcaption {
+        margin-top: 0.4rem;
+        font-size: 0.875rem;
+        line-height: 1.4;
+        color: #57606a;
       }
     `
   ]
@@ -516,6 +563,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   private readonly sanitizer = inject(DomSanitizer);
   private readonly editor = viewChild(RichTextEditorComponent);
 
+  readonly layout = imageLayout();
   readonly siteHomeUrl = environment.siteHomeUrl;
   readonly siteHomeLabel = environment.siteHomeLabel || environment.siteName;
 

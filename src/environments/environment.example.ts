@@ -9,6 +9,12 @@ export const environment = {
   siteHomeUrl: 'https://example.com/',
   siteHomeLabel: 'My Site',
   appBasePath: '/blog',
+  /**
+   * Image presentation in posts.
+   * - column: centered photo stack with captions (trip diary)
+   * - inline: classic article flow (side-by-side ok)
+   */
+  imageLayout: 'column' as 'column' | 'inline',
   blogApiUrl: 'https://abc123.execute-api.us-east-1.amazonaws.com/prod',
   cognito: {
     region: 'us-east-1',

@@ -3,6 +3,7 @@ import { DatePipe } from '@angular/common';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { environment } from '../../environments/environment';
+import { imageLayout } from './blog-config';
 import { BlogApiService, BlogPost, postedDayDiffers } from './blog-api.service';
 
 @Component({
@@ -36,6 +37,8 @@ import { BlogApiService, BlogPost, postedDayDiffers } from './blog-api.service';
 
         <div
           class="prose prose-neutral max-w-none blog-body"
+          [class.image-layout-column]="layout === 'column'"
+          [class.image-layout-inline]="layout === 'inline'"
           [innerHTML]="bodyHtml()"
         ></div>
       }
@@ -43,13 +46,53 @@ import { BlogApiService, BlogPost, postedDayDiffers } from './blog-api.service';
   `,
   styles: [
     `
-      :host ::ng-deep .blog-body img {
+      :host ::ng-deep .blog-body.image-layout-column .blog-figure,
+      :host ::ng-deep .blog-body.image-layout-column figure {
+        display: block;
+        margin: 1.75rem auto;
+        max-width: 100%;
+        text-align: center;
+      }
+      :host ::ng-deep .blog-body.image-layout-column .blog-figure img,
+      :host ::ng-deep .blog-body.image-layout-column figure img,
+      :host ::ng-deep .blog-body.image-layout-column img.blog-image,
+      :host ::ng-deep .blog-body.image-layout-column img {
+        display: block;
+        width: auto;
+        max-width: 100%;
+        height: auto;
+        margin-left: auto;
+        margin-right: auto;
+        border-radius: 0.375rem;
+      }
+      :host ::ng-deep .blog-body.image-layout-column figcaption {
+        margin-top: 0.6rem;
+        font-size: 0.9375rem;
+        line-height: 1.45;
+        color: #57606a;
+        text-align: center;
+      }
+      :host ::ng-deep .blog-body.image-layout-inline .blog-figure,
+      :host ::ng-deep .blog-body.image-layout-inline figure {
         display: inline-block;
+        margin: 0.5rem 1rem 0.5rem 0;
+        max-width: 100%;
+        vertical-align: top;
+        text-align: left;
+      }
+      :host ::ng-deep .blog-body.image-layout-inline .blog-figure img,
+      :host ::ng-deep .blog-body.image-layout-inline figure img,
+      :host ::ng-deep .blog-body.image-layout-inline img {
+        display: block;
         max-width: 100%;
         height: auto;
         border-radius: 0.375rem;
-        margin: 0.5rem 1rem 0.5rem 0;
-        vertical-align: top;
+      }
+      :host ::ng-deep .blog-body.image-layout-inline figcaption {
+        margin-top: 0.4rem;
+        font-size: 0.875rem;
+        line-height: 1.4;
+        color: #57606a;
       }
     `
   ]
@@ -59,6 +102,7 @@ export class BlogPostComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly sanitizer = inject(DomSanitizer);
 
+  readonly layout = imageLayout();
   readonly siteHomeUrl = environment.siteHomeUrl;
   readonly siteHomeLabel = environment.siteHomeLabel || environment.siteName;
 

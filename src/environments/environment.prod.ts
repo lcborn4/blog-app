@@ -5,6 +5,8 @@ export const environment = {
   siteHomeUrl: '',
   siteHomeLabel: '',
   appBasePath: '/blog',
+  /** column = trip photo diary; inline = classic article */
+  imageLayout: 'inline' as 'column' | 'inline',
   blogApiUrl: 'https://YOUR_API_ID.execute-api.us-east-1.amazonaws.com/prod',
   cognito: {
     region: 'us-east-1',

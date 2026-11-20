@@ -15,12 +15,17 @@ import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Link from '@tiptap/extension-link';
 import { BlogApiService } from '../blog/blog-api.service';
+import { imageLayout } from '../blog/blog-config';
 import { ResizableImage } from './resizable-image.extension';
 
 @Component({
   standalone: true,
   selector: 'app-rich-text-editor',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    '[class.image-layout-column]': 'layout === "column"',
+    '[class.image-layout-inline]': 'layout === "inline"'
+  },
   template: `
     <div
       class="rounded-md border border-gray-300 bg-white"
@@ -190,19 +195,56 @@ import { ResizableImage } from './resizable-image.extension';
         background: #eaeef2;
         color: #24292f;
       }
-      :host ::ng-deep .rte-image-node {
+      :host.image-layout-column ::ng-deep .rte-image-node {
+        position: relative;
+        display: block;
+        max-width: 100%;
+        margin: 1.25rem auto;
+        box-sizing: border-box;
+        text-align: center;
+      }
+      :host.image-layout-inline ::ng-deep .rte-image-node {
         position: relative;
         display: inline-block;
         max-width: 100%;
         margin: 0.5rem 1rem 0.5rem 0;
-        padding-right: 2px;
-        vertical-align: top;
         box-sizing: border-box;
+        vertical-align: top;
+        text-align: left;
       }
-      :host ::ng-deep .rte-image-node.is-selected {
+      :host.image-layout-inline ::ng-deep .rte-image-caption-input {
+        text-align: left;
+      }
+      :host ::ng-deep .rte-image-frame {
+        position: relative;
+        line-height: 0;
+        width: 100%;
+      }
+      :host ::ng-deep .rte-image-node.is-selected .rte-image-frame {
         /* box-shadow instead of outline so selection chrome doesn't cover the caret */
         box-shadow: 0 0 0 2px #0969da;
         border-radius: 0.375rem;
+      }
+      :host ::ng-deep .rte-image-caption-input {
+        display: block;
+        width: 100%;
+        margin-top: 0.5rem;
+        border: 0;
+        border-bottom: 1px dashed #d0d7de;
+        background: transparent;
+        text-align: center;
+        font-size: 0.875rem;
+        line-height: 1.4;
+        color: #57606a;
+        padding: 0.25rem 0.5rem;
+      }
+      :host ::ng-deep .rte-image-caption-input:focus {
+        outline: none;
+        border-bottom-color: #0969da;
+        color: #24292f;
+      }
+      :host ::ng-deep .rte-image-caption-input::placeholder {
+        color: #afb8c1;
       }
       :host ::ng-deep .rte-image-toolbar {
         position: absolute;
@@ -251,45 +293,6 @@ import { ResizableImage } from './resizable-image.extension';
         height: 1rem;
         background: #d0d7de;
         margin: 0 0.15rem;
-      }
-      :host ::ng-deep .rte-image-alt-wrap {
-        position: relative;
-      }
-      :host ::ng-deep .rte-image-alt-panel {
-        position: absolute;
-        left: 0;
-        top: calc(100% + 6px);
-        width: 14rem;
-        padding: 0.5rem;
-        border-radius: 0.5rem;
-        border: 1px solid #d0d7de;
-        background: #fff;
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
-        z-index: 6;
-      }
-      :host ::ng-deep .rte-image-alt-input {
-        width: 100%;
-        border: 1px solid #d0d7de;
-        border-radius: 0.375rem;
-        padding: 0.35rem 0.45rem;
-        font-size: 0.75rem;
-      }
-      :host ::ng-deep .rte-image-alt-actions {
-        display: flex;
-        justify-content: flex-end;
-        gap: 0.5rem;
-        margin-top: 0.4rem;
-      }
-      :host ::ng-deep .rte-image-alt-actions button {
-        border: 0;
-        background: transparent;
-        font-size: 0.75rem;
-        color: #656d76;
-        cursor: pointer;
-      }
-      :host ::ng-deep .rte-image-alt-actions button.is-primary {
-        color: #0969da;
-        font-weight: 600;
       }
       :host ::ng-deep .rte-image-handle {
         position: absolute;
@@ -362,7 +365,8 @@ import { ResizableImage } from './resizable-image.extension';
         max-width: 100%;
         height: auto;
         border-radius: 0.375rem;
-        margin: 0.75rem 0 0.25rem;
+        display: block;
+        margin: 0 auto;
       }
       :host ::ng-deep .ProseMirror img.ProseMirror-selectednode {
         outline: 2px solid #0969da;
@@ -374,6 +378,7 @@ export class RichTextEditorComponent implements AfterViewInit, OnDestroy {
   private readonly api = inject(BlogApiService);
   private readonly host = viewChild.required<ElementRef<HTMLDivElement>>('host');
 
+  readonly layout = imageLayout();
   readonly content = input<string>('');
   readonly contentChange = output<string>();
 
@@ -401,13 +406,16 @@ export class RichTextEditorComponent implements AfterViewInit, OnDestroy {
           link: false
         }),
         ResizableImage.configure({
-          inline: true,
+          layout: this.layout,
           allowBase64: false,
           HTMLAttributes: { class: 'blog-image' }
         }),
         Link.configure({ openOnClick: false }),
         Placeholder.configure({
-          placeholder: 'Write your post…'
+          placeholder:
+            this.layout === 'column'
+              ? 'Add photos and captions for this trip…'
+              : 'Write your post…'
         })
       ],
       content: this.content() || '',
@@ -598,12 +606,12 @@ export class RichTextEditorComponent implements AfterViewInit, OnDestroy {
       if (!put.ok) throw new Error(`Upload failed (${put.status})`);
 
       this.uploadProgress.set(100);
-      const alt = file.name.replace(/\.[^.]+$/, '');
+      const alt = file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').trim();
       this.editor()
         ?.chain()
         .focus()
         .setImage({ src: meta.publicUrl, alt })
-        .updateAttributes('image', { width: '100%', alt, title: alt })
+        .updateAttributes('image', { width: '100%', alt, title: alt, caption: null })
         .run();
       this.latestHtml = this.editor()?.getHTML() || '';
       this.contentChange.emit(this.latestHtml);
