@@ -7,4 +7,4 @@ capabilities = "CAPABILITY_IAM"
 confirm_changeset = false
 fail_on_empty_changeset = false
 region = "us-east-2"
-parameter_overrides = "ProjectPrefix=coolconfessions AllowedOrigins=http://localhost:4200,http://127.0.0.1:4200,https://d2mr7rq596a2e1.cloudfront.net,https://www.coolconfession.com,https://coolconfession.com CognitoUserPoolId=us-east-2_O8NsZhypZ CognitoClientId=7fg4lohk1v68s34n3iml53otvr AllowedEmails=cjborn@gmail.com,jentisdale@yahoo.com MaxImagesPerPost=12"
+parameter_overrides = "ProjectPrefix=coolconfessions AllowedOrigins=http://localhost:4200,http://127.0.0.1:4200,https://d2mr7rq596a2e1.cloudfront.net,https://www.coolconfession.com,https://coolconfession.com CognitoUserPoolId=us-east-2_O8NsZhypZ CognitoClientId=7fg4lohk1v68s34n3iml53otvr AllowedEmails=cjborn@gmail.com,jentisdale@gmail.com MaxImagesPerPost=12"

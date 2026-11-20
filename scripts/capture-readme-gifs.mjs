@@ -40,13 +40,16 @@ function run(cmd, args, opts = {}) {
 }
 
 async function videoToGif(webm, gif) {
+  // Slow playback (~2.5x) and lower fps so README demos are easy to follow.
   const palette = webm.replace(/\.webm$/, '-palette.png');
+  const vf =
+    'setpts=2.5*PTS,fps=8,scale=960:-1:flags=lanczos';
   await run('ffmpeg', [
     '-y',
     '-i',
     webm,
     '-vf',
-    'fps=12,scale=960:-1:flags=lanczos,palettegen=stats_mode=diff',
+    `${vf},palettegen=stats_mode=diff`,
     palette
   ]);
   await run('ffmpeg', [
@@ -56,7 +59,7 @@ async function videoToGif(webm, gif) {
     '-i',
     palette,
     '-lavfi',
-    'fps=12,scale=960:-1:flags=lanczos[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=5',
+    `${vf}[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=5`,
     gif
   ]);
   await rm(palette, { force: true });
@@ -98,41 +101,41 @@ async function main() {
   await withVideoContext(browser, 'browse-index', async (page) => {
     await page.goto(base, { waitUntil: 'networkidle' });
     await page.getByRole('heading', { name: 'Blog' }).waitFor();
-    await sleep(600);
+    await sleep(1400);
     await page.getByRole('button', { name: '2026' }).click();
-    await sleep(700);
+    await sleep(1600);
     await page.getByRole('button', { name: 'October' }).click();
-    await sleep(900);
+    await sleep(1800);
     await page.getByRole('button', { name: 'All' }).click();
-    await sleep(500);
+    await sleep(1200);
     await page.getByRole('button', { name: /Sort & dates|Hide sort/ }).click();
-    await sleep(700);
+    await sleep(1600);
     await page.getByRole('button', { name: /Sort & dates|Hide sort/ }).click();
-    await sleep(400);
+    await sleep(1000);
   });
 
   await withVideoContext(browser, 'open-post', async (page) => {
     await page.goto(base, { waitUntil: 'networkidle' });
     await page.getByRole('link', { name: 'Weekend trail notes' }).click();
     await page.getByRole('heading', { name: 'Weekend trail notes' }).waitFor();
-    await sleep(500);
+    await sleep(1400);
     await page.mouse.wheel(0, 280);
-    await sleep(800);
+    await sleep(1800);
     await page.getByRole('link', { name: 'Blog', exact: true }).click();
     await page.getByRole('heading', { name: 'Blog' }).waitFor();
-    await sleep(500);
+    await sleep(1200);
   });
 
   await withVideoContext(browser, 'admin-posts', async (page) => {
     await page.goto(`${base}admin`, { waitUntil: 'networkidle' });
     await page.getByRole('heading', { name: 'Blog Admin' }).waitFor();
-    await sleep(700);
+    await sleep(1600);
     await page.mouse.wheel(0, 420);
-    await sleep(900);
+    await sleep(1800);
     await page.getByRole('button', { name: 'Edit' }).first().click();
-    await sleep(1000);
+    await sleep(2000);
     await page.getByRole('button', { name: 'Switch to new draft' }).click();
-    await sleep(700);
+    await sleep(1400);
   });
 
   await browser.close();
